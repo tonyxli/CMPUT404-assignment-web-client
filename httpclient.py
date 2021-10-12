@@ -33,7 +33,15 @@ class HTTPResponse(object):
         self.body = body
 
 class HTTPClient(object):
-    #def get_host_port(self,url):
+    def get_host_port(self,url):
+        host = urllib.parse.urlparse(url).hostname
+        port = urllib.parse.urlparse(url).port
+        path = urllib.parse.urlparse(url).path
+        if port == None:
+            port = 80
+        if path == "":
+            path == "/"
+        return host, port, path
 
     def connect(self, host, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -41,13 +49,18 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        return None
+        status = data.split("\r\n")[0]
+        code = status.split(" ")[1]
+        code = int(code)
+        return code
 
     def get_headers(self,data):
-        return None
+        headers = data.split("\r\n\r\n")[0]
+        return headers
 
     def get_body(self, data):
-        return None
+        body = data.split("\r\n\r\n")[1]
+        return body
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
@@ -69,12 +82,45 @@ class HTTPClient(object):
 
     def GET(self, url, args=None):
         code = 500
-        body = ""
+        host, port, path = self.get_host_port(url)
+        body = f"GET {path} HTTP/1.1\r\nHost: {host}\r\n"
+
+        self.connect(host, port)
+        self.sendall(body)
+        self.socket.shutdown(socket.SHUT_WR)
+        data = self.recvall(self.socket)
+        print(data)
+        code = self.get_code(data)
+        body = self.get_body(data)
+        
+        self.close()
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
         code = 500
-        body = ""
+        host, port, path = self.get_host_port(url)
+        body = f"POST {path} HTTP/1.1\r\nHost: {host}\r\nContent-type: application/x-www-form-urlencoded\r\nContent-length: "
+
+        if args != None:
+            content = ""
+            for key in args:
+                content = content + key + "=" + args[key] + "&"
+            content = content[:-1]
+            content_len = len(content)
+            body = body + str(content_len) + "\r\n\r\n" + content
+
+        else:
+            body = body + "0\r\n\r\n"
+
+        self.connect(host, port)
+        self.sendall(body)
+        self.socket.shutdown(socket.SHUT_WR)
+        data = self.recvall(self.socket)
+        print(data)
+        code = self.get_code(data)
+        body = self.get_body(data)
+
+        self.close()
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
