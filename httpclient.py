@@ -83,13 +83,12 @@ class HTTPClient(object):
     def GET(self, url, args=None):
         code = 500
         host, port, path = self.get_host_port(url)
-        body = f"GET {path} HTTP/1.1\r\nHost: {host}\r\n"
-
+        body = f"GET {path} HTTP/1.1\r\nHost: {host}\r\n\r\n"
+        
         self.connect(host, port)
         self.sendall(body)
         self.socket.shutdown(socket.SHUT_WR)
         data = self.recvall(self.socket)
-        print(data)
         code = self.get_code(data)
         body = self.get_body(data)
         
@@ -108,7 +107,6 @@ class HTTPClient(object):
             content = content[:-1]
             content_len = len(content)
             body = body + str(content_len) + "\r\n\r\n" + content
-
         else:
             body = body + "0\r\n\r\n"
 
@@ -116,7 +114,6 @@ class HTTPClient(object):
         self.sendall(body)
         self.socket.shutdown(socket.SHUT_WR)
         data = self.recvall(self.socket)
-        print(data)
         code = self.get_code(data)
         body = self.get_body(data)
 
